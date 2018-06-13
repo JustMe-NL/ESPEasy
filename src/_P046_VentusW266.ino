@@ -109,8 +109,7 @@ byte Plugin_046_receivedData;                                   // Byte to store
 
                                                                 // Vars used for interpreting the data:
 volatile unsigned long Plugin_046_lastrainctr;                  // Keep track of wdcounter (1/2 min tick)
-volatile int Plugin_046_lastraincount;                          // Last rain count
-volatile float Plugin_046_rainmmph = 0;
+volatile float Plugin_046_lastraincount;                        // Last rain count
 volatile unsigned long Plugin_046_laststrikectr;                // Keep track of wdcounter (1/2 min tick)
 volatile unsigned int Plugin_046_laststrikecount;               // Last number of strikes
 volatile int Plugin_046_strikesph = 0;
@@ -376,22 +375,19 @@ boolean Plugin_046(byte function, struct EventStruct *event, String& string)
             }
             case (2):
             {
-              float raincnt = float(((Plugin_046_databuffer[15]) * 256 + Plugin_046_databuffer[14]) / 4);
-              int rainnow = int(raincnt);
-              if (wdcounter < Plugin_046_lastrainctr) { Plugin_046_lastrainctr = wdcounter; }
-              if (Plugin_046_lastrainctr > (wdcounter + 10))                      // 5 min interval
+              UserVar[event->BaseVarIndex + 1] = float(((Plugin_046_databuffer[15]) * 256 + Plugin_046_databuffer[14]) / 4);
+              if (wdcounter < Plugin_046_lastrainctr) { Plugin_046_lastrainctr = wdcounter; }           // dirty overflow fix
+              if (Plugin_046_lastrainctr > (wdcounter + 10))                                            // ~5 min interval
               {
                 Plugin_046_lastrainctr = wdcounter;
-                if (rainnow > Plugin_046_lastraincount)
-                {                                                                 // per 5 min * 12 = per hour
-                  Plugin_046_rainmmph = float(rainnow - Plugin_046_lastraincount) * 12;
-                  Plugin_046_lastraincount = rainnow;
+                if (UserVar[event->BaseVarIndex + 1] > Plugin_046_lastraincount)
+                {                                                                                       // per 5 min * 12 = per hour, x100 = 1200
+                  UserVar[event->BaseVarIndex] = float(UserVar[event->BaseVarIndex + 1] - Plugin_046_lastraincount) * 1200;
+                  Plugin_046_lastraincount = UserVar[event->BaseVarIndex + 1];
                 } else {
-                  Plugin_046_rainmmph = 0;
+                  UserVar[event->BaseVarIndex] = 0;
                 }
               }
-              UserVar[event->BaseVarIndex] = Plugin_046_rainmmph;
-              UserVar[event->BaseVarIndex + 1] = raincnt;
               break;
             }
             case (3):
@@ -405,12 +401,12 @@ boolean Plugin_046(byte function, struct EventStruct *event, String& string)
               // int strikes = 0;
               unsigned int strikesnow = int((Plugin_046_databuffer[21]) * 256 + Plugin_046_databuffer[20]);
               if (wdcounter < Plugin_046_laststrikectr) { Plugin_046_laststrikectr = wdcounter; }
-              if (Plugin_046_laststrikectr > (wdcounter + 10))                   // 5 min interval
+              if (Plugin_046_laststrikectr > (wdcounter + 10))                   // ~5 min interval
               {
                 Plugin_046_laststrikectr = wdcounter;
                 if (strikesnow > Plugin_046_laststrikecount)
                 {
-                  Plugin_046_strikesph = strikesnow - Plugin_046_laststrikecount;
+                  Plugin_046_strikesph = (strikesnow - Plugin_046_laststrikecount) * 12;
                   Plugin_046_laststrikecount = strikesnow;
                 } else {
                   Plugin_046_strikesph = 0;
